@@ -112,6 +112,12 @@ class PD_INFER_DECL Tensor {
   template <typename T>
   void CopyFromCpu(const T* data);
 
+  /// \brief Copy the host memory to tensor data.
+  /// It's usually used to set the input tensor data.
+  /// \param data The pointer of the data, from which the tensor will copy.
+  template <typename T>
+  void CopyFromCustomDevice(const T* data);
+
   /// \brief Share the data with tensor data.
   /// It's usually used to set the tensor data.
   /// \param data The pointer of the data, from which the tensor will share.

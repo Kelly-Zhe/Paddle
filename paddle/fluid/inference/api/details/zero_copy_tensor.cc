@@ -289,6 +289,34 @@ void Tensor::CopyFromCpu(const T *data) {
 #endif
   }
 }
+template <typename T>
+void Tensor::CopyFromCustomDevice(const T* data){
+  EAGER_GET_TENSOR(phi::DenseTensor);
+  PADDLE_ENFORCE_GE(tensor->numel(),
+                    0,
+                    paddle::platform::errors::PreconditionNotMet(
+                        "You should call Tensor::Reshape(const "
+                        "std::vector<int> &shape)"
+                        "function before copying data from cpu."));
+  size_t ele_size = tensor->numel() * sizeof(T);
+  auto device_type_id =
+      static_cast<size_t>(place_) - static_cast<size_t>(PlaceType::kCUSTOM);
+  paddle::platform::DeviceContextPool &pool =
+      paddle::platform::DeviceContextPool::Instance();
+  paddle::platform::CustomPlace custom_place(
+      phi::CustomRegisteredDeviceMap::Instance().GetGlobalDeviceType(
+          device_type_id),
+      device_);
+  auto *t_data = tensor->mutable_data<T>(custom_place);
+  auto *dev_ctx = static_cast<const paddle::platform::CustomDeviceContext *>(
+      pool.Get(custom_place));
+  paddle::memory::Copy(custom_place,
+                       static_cast<void *>(t_data),
+                       custom_place,
+                       data,
+                       ele_size,
+                       dev_ctx->stream());
+}
 
 template <typename T>
 struct DataTypeInfo;
