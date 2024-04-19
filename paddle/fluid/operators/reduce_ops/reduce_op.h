@@ -87,7 +87,7 @@ static inline std::vector<int> GetReduceDim(const std::vector<int>& dims,
     for (auto e : dims) {
       PADDLE_ENFORCE_LT(e,
                         dim_size,
-                        paddle::platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "ReduceBaseOp: invalid axis, when x_dims is %d, "
                             "axis[i] should less than x_dims, but got %d.",
                             dim_size,
@@ -511,31 +511,33 @@ class ReduceBaseOp : public framework::OperatorWithKernel {
     auto dims = ctx->Attrs().Get<std::vector<int>>("dim");
     PADDLE_ENFORCE_GT(dims.size(),
                       0,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The input dim dimensions of ReduceBaseOp "
                           "should be greater than 0. But received the dim "
-                          "dimesions of Reduce = %d.",
+                          "dimensions of Reduce = %d.",
                           dims.size()));
 
     for (size_t i = 0; i < dims.size(); ++i) {
-      PADDLE_ENFORCE_LT(dims[i],
-                        x_rank,
-                        platform::errors::InvalidArgument(
-                            "The reduce dim index %d should be in the "
-                            "range [-dimension(X), dimension(X)] "
-                            "which dimesion = %d. But received dim index = %d.",
-                            i,
-                            x_rank,
-                            dims[i]));
-      PADDLE_ENFORCE_GE(dims[i],
-                        -x_rank,
-                        platform::errors::InvalidArgument(
-                            "The reduce dim index %d should be in the "
-                            "range [-dimension(X), dimension(X)] "
-                            "which dimesion = %d. But received dim index = %d.",
-                            i,
-                            x_rank,
-                            dims[i]));
+      PADDLE_ENFORCE_LT(
+          dims[i],
+          x_rank,
+          phi::errors::InvalidArgument(
+              "The reduce dim index %d should be in the "
+              "range [-dimension(X), dimension(X)] "
+              "which dimension = %d. But received dim index = %d.",
+              i,
+              x_rank,
+              dims[i]));
+      PADDLE_ENFORCE_GE(
+          dims[i],
+          -x_rank,
+          phi::errors::InvalidArgument(
+              "The reduce dim index %d should be in the "
+              "range [-dimension(X), dimension(X)] "
+              "which dimension = %d. But received dim index = %d.",
+              i,
+              x_rank,
+              dims[i]));
       if (dims[i] < 0) dims[i] = x_rank + dims[i];
     }
     sort(dims.begin(), dims.end());
@@ -626,7 +628,7 @@ class ReduceBaseOp : public framework::OperatorWithKernel {
                             platform::is_xpu_place(ctx.GetPlace()) ||
                             platform::is_custom_place(ctx.GetPlace()),
                         true,
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "float16 can only be used on GPU or XPU place"));
     }
     return phi::KernelKey(input_data_type, ctx.GetPlace());
@@ -668,10 +670,10 @@ class ReduceGradOp : public framework::OperatorWithKernel {
         PADDLE_ENFORCE_LT(
             dims[i],
             x_rank,
-            platform::errors::InvalidArgument(
+            phi::errors::InvalidArgument(
                 "The reduce dim index %d should be in the "
                 "range [-dimension(X), dimension(X)], "
-                "which dimesion = %d. But received dim index = %d.",
+                "which dimension = %d. But received dim index = %d.",
                 i,
                 x_rank,
                 dims[i]));

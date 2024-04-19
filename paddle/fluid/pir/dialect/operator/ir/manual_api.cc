@@ -13,12 +13,13 @@
 // limitations under the License.
 
 #include "paddle/fluid/pir/dialect/operator/ir/manual_api.h"
+#include "paddle/fluid/pir/dialect/distributed/ir/dist_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_api.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
-#include "paddle/pir/core/builtin_op.h"
-#include "paddle/pir/core/parameter.h"
+#include "paddle/pir/include/core/builtin_op.h"
+#include "paddle/pir/include/core/parameter.h"
 namespace paddle {
 namespace dialect {
 
@@ -60,6 +61,20 @@ void set_parameter(const pir::Value& parameter, const std::string& name) {
   ApiBuilder::Instance().SetParameter(name, std::move(param));
   ApiBuilder::Instance().GetBuilder()->Build<pir::SetParameterOp>(parameter,
                                                                   name);
+}
+
+void shadow_output(const pir::Value& persist_value, const std::string& name) {
+  auto& builder = ApiBuilder::Instance().GetBuilder();
+  auto op = builder->Build<pir::ShadowOutputOp>(persist_value, name);
+  if (auto dist_interface =
+          persist_value.type().dyn_cast<DistTypeInterface>()) {
+    op->set_attribute(
+        kAttrOpDistAttr,
+        OperationDistAttribute::get(builder->ir_context(),
+                                    dist_interface.process_mesh_attr(),
+                                    {dist_interface.tensor_dist_attr()},
+                                    {}));
+  }
 }
 
 pir::Value embedding_grad(const pir::Value& x,
@@ -223,6 +238,26 @@ pir::Value assign(const pir::Value& x) {
         "Currently, assign only supports DenseTensorType and "
         "DenseTensorArrayType."));
   }
+}
+
+std::tuple<pir::Value, pir::Value> fused_gemm_epilogue(pir::Value x,
+                                                       pir::Value y,
+                                                       pir::Value bias,
+                                                       bool trans_x,
+                                                       bool trans_y,
+                                                       std::string activation) {
+  pir::IrContext* ctx = pir::IrContext::Instance();
+  pir::AttributeMap attribute_map = {
+      {"trans_x", pir::BoolAttribute::get(ctx, trans_x)},
+      {"trans_y", pir::BoolAttribute::get(ctx, trans_y)},
+      {"activation", pir::StrAttribute::get(ctx, activation)}};
+  auto fused_gemm_epilogue_op =
+      ApiBuilder::Instance()
+          .GetBuilder()
+          ->Build<paddle::dialect::FusedGemmEpilogueOp>(
+              x, y, bias, attribute_map);
+  return std::make_tuple(fused_gemm_epilogue_op.result(0),
+                         fused_gemm_epilogue_op.result(1));
 }
 
 pir::Value array_pop(pir::Value input, int index) {

@@ -14,16 +14,16 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/operators/fused/fused_dropout_act_bias.h"
 #include "paddle/fluid/operators/fused/fused_layernorm_residual_dropout_bias.h"
 #include "paddle/fluid/operators/fused/fused_residual_dropout_bias.h"
-#include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/generator.h"
 #include "paddle/phi/kernels/funcs/dropout_impl_util.h"
 #include "paddle/phi/kernels/funcs/functors.h"
 #include "paddle/phi/kernels/layer_norm_kernel.h"
 
-PHI_DECLARE_bool(use_fast_math);
+COMMON_DECLARE_bool(use_fast_math);
 
 namespace paddle {
 namespace operators {
@@ -288,7 +288,7 @@ class FusedDropoutHelper {
                                     quant_max_bound,
                                     quant_min_bound);
     } else {
-      PADDLE_THROW(platform::errors::InvalidArgument(
+      PADDLE_THROW(phi::errors::InvalidArgument(
           "Currently only supports gelu or relu activation functions!"));
     }
   }
@@ -332,7 +332,7 @@ class FusedDropoutHelper {
           d_bias,
           ctx);
     } else {
-      PADDLE_THROW(platform::errors::InvalidArgument(
+      PADDLE_THROW(phi::errors::InvalidArgument(
           "Currently only supports gelu or relu activation functions!"));
     }
   }

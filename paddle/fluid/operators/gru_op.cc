@@ -17,12 +17,12 @@ limitations under the License. */
 #include <memory>
 #include <string>
 
-#include "paddle/phi/core/flags.h"
+#include "paddle/common/flags.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/detail/gru_cpu_kernel.h"
 #include "paddle/phi/kernels/funcs/detail/gru_kernel.h"
 
-PHI_DECLARE_int32(paddle_num_threads);
+COMMON_DECLARE_int32(paddle_num_threads);
 
 namespace paddle {
 namespace operators {
@@ -52,7 +52,7 @@ class GRUOp : public framework::OperatorWithKernel {
     if (ctx->IsRuntime()) {
       PADDLE_ENFORCE_EQ(input_size,
                         frame_size * 3,
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "The second dimension of Input(Input) must be 3 "
                             "times of frame_size in GRUOp, but received %d "
                             "(Input) vs %d (frame_size).",
@@ -62,7 +62,7 @@ class GRUOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         weight_dims[1],
         frame_size * 3,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The shape of Input(Weight) matrix must be [frame_size, frame_size "
             "* 3], but received [%d, %d] (Weight) vs [%d, %d] (frame_size).",
             weight_dims[0],
@@ -74,7 +74,7 @@ class GRUOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(
           h0_dims[1],
           frame_size,
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "The width of Input(H0) must be equal to frame_size, but "
               "received %d (width of H0) vs %d (frame_size).",
               h0_dims[1],
@@ -87,7 +87,7 @@ class GRUOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(
           bias_height,
           1,
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "The shape of Bias must be [1, frame_size * 3], but received "
               "[%d, %d] (Bias) vs [1, %d] (frame_size * 3).",
               bias_height,
@@ -96,7 +96,7 @@ class GRUOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(
           bias_width,
           frame_size * 3,
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "The shape of Bias must be [1, frame_size * 3], but received "
               "[%d, %d] (Bias) vs [1, %d] (frame_size * 3).",
               bias_height,
@@ -135,7 +135,7 @@ class GRUOpMaker : public framework::OpProtoAndCheckerMaker {
         "the update gate and reset gate with shape (D x 2D), and the second "
         "part are weights of output candidate with shape (D x D).");
     AddInput("Bias",
-             "(Tensor, optional) Bias vector with shape (1 x 3D) concating "
+             "(Tensor, optional) Bias vector with shape (1 x 3D) concatenating "
              "bias of the update gate, reset gate and output candidate.")
         .AsDispensable();
     AddOutput(
@@ -233,7 +233,7 @@ class GRUGradOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         input_size,
         frame_size * 3,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The second dimension of Input(Input) must be 3 times of "
             "frame_size in GRUOp, but received %d (Input) vs %d (frame_size).",
             input_size,
@@ -241,7 +241,7 @@ class GRUGradOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         weight_height,
         frame_size,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The shape of Input(Weight) matrix must be [frame_size, frame_size "
             "* 3], but received [%d, %d] (Weight) vs [%d, %d] (frame_size).",
             weight_height,
@@ -251,7 +251,7 @@ class GRUGradOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         weight_width,
         frame_size * 3,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The shape of Input(Weight) matrix must be [frame_size, frame_size "
             "* 3], but received [%d, %d] (Weight) vs [%d, %d] (frame_size).",
             weight_height,
@@ -263,7 +263,7 @@ class GRUGradOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(
           h0_dims[1],
           frame_size,
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "The width of Input(H0) must be equal to frame_size, but "
               "received %d (width of H0) vs %d (frame_size).",
               h0_dims[1],
@@ -279,7 +279,7 @@ class GRUGradOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(
           bias_height,
           1,
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "The shape of Bias must be [1, frame_size * 3], but received "
               "[%d, %d] (Bias) vs [1, %d] (frame_size * 3).",
               bias_height,
@@ -288,7 +288,7 @@ class GRUGradOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(
           bias_width,
           frame_size * 3,
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "The shape of Bias must be [1, frame_size * 3], but received "
               "[%d, %d] (Bias) vs [1, %d] (frame_size * 3).",
               bias_height,
@@ -406,8 +406,8 @@ class GRUCPUKernel : public framework::OpKernel<T> {
                                        frame_size /*height of height*/);
       PADDLE_ENFORCE_NOT_NULL(
           packed_gate,
-          platform::errors::NotFound(
-              "The caculation result of packed_gate by "
+          phi::errors::NotFound(
+              "The calculation result of packed_gate by "
               "GEMM_ALLOC should not be null when using MKL."));
       blas.GEMM_PACK(CblasBMatrix,
                      CblasNoTrans,
@@ -424,8 +424,8 @@ class GRUCPUKernel : public framework::OpKernel<T> {
                                         frame_size /*height of height*/);
       PADDLE_ENFORCE_NOT_NULL(
           packed_state,
-          platform::errors::NotFound(
-              "The caculation result of packed_state by "
+          phi::errors::NotFound(
+              "The calculation result of packed_state by "
               "GEMM_ALLOC should not be null when using MKL."));
       blas.GEMM_PACK(CblasBMatrix,
                      CblasNoTrans,

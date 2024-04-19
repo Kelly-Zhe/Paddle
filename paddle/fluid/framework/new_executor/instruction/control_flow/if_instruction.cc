@@ -29,13 +29,18 @@
 #include "paddle/phi/core/meta_tensor.h"
 #include "paddle/phi/core/type_defs.h"
 
-#include "paddle/pir/core/builtin_attribute.h"
-#include "paddle/pir/core/operation.h"
-#include "paddle/pir/core/value.h"
+#include "paddle/pir/include/core/builtin_attribute.h"
+#include "paddle/pir/include/core/operation.h"
+#include "paddle/pir/include/core/value.h"
 
 #include "paddle/fluid/framework/new_executor/instruction/instruction_util.h"
 #include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
+
+#ifdef PADDLE_WITH_DNNL
+#include "paddle/fluid/platform/onednn_helper.h"
+#endif
+
 namespace paddle {
 namespace framework {
 
@@ -193,25 +198,14 @@ IfInstruction::~IfInstruction() {
   }
 }
 
-void IfInstruction::CopyBranchOutput(const std::vector<std::string>& var_names,
-                                     const PirInterpreter* inter) {
-  for (size_t i = 0; i < var_names.size(); ++i) {
-    auto* inner_var = inter->InnerScope()->GetVar(var_names[i]);
+void IfInstruction::SetOutputHooks(const std::vector<PirHookFunc>& hookfuncs) {
+  true_branch_inter_->SetOutputHooks(hookfuncs);
+  false_branch_inter_->SetOutputHooks(hookfuncs);
+}
 
-    if (inner_var->IsType<phi::DenseTensor>()) {
-      output_vars_[i]->GetMutable<phi::DenseTensor>()->ShareDataWith(
-          inner_var->Get<phi::DenseTensor>());
-
-    } else if (inner_var->IsType<phi::TensorArray>()) {
-      const auto& inner_array = inner_var->Get<phi::TensorArray>();
-      auto* output_array = output_vars_[i]->GetMutable<phi::TensorArray>();
-      // output_array->clear();
-      *output_array = inner_array;
-    } else {
-      PADDLE_THROW(
-          phi::errors::Unimplemented("unsupported type %d", inner_var->Type()));
-    }
-  }
+void IfInstruction::SetInputHooks(const std::vector<PirHookFunc>& hookfuncs) {
+  true_branch_inter_->SetInputHooks(hookfuncs);
+  false_branch_inter_->SetInputHooks(hookfuncs);
 }
 
 void IfInstruction::Run() {
@@ -245,11 +239,25 @@ void IfInstruction::Run() {
         });
   }
   if (cond) {
+#ifdef PADDLE_WITH_DNNL
+    // Executor on being destroyed clears oneDNN cache and resets
+    // registered model data layout. This is unwanted for nested
+    // Executors (executors declared inside control ops)
+    paddle::platform::DontClearMKLDNNCache(true_branch_inter_->GetPlace());
+#endif
     true_branch_inter_->Run({}, false);
-    CopyBranchOutput(true_branch_outputs_, true_branch_inter_);
+    CopyBranchOutput(
+        true_branch_outputs_, output_vars_, true_branch_inter_->InnerScope());
   } else {
+#ifdef PADDLE_WITH_DNNL
+    // Executor on being destroyed clears oneDNN cache and resets
+    // registered model data layout. This is unwanted for nested
+    // Executors (executors declared inside control ops)
+    paddle::platform::DontClearMKLDNNCache(false_branch_inter_->GetPlace());
+#endif
     false_branch_inter_->Run({}, false);
-    CopyBranchOutput(false_branch_outputs_, false_branch_inter_);
+    CopyBranchOutput(
+        false_branch_outputs_, output_vars_, false_branch_inter_->InnerScope());
   }
   // copy output
 }

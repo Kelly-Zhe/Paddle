@@ -46,7 +46,7 @@ class GRUUnitKernel : public framework::OpKernel<T> {
       else
         ReluCUDAFunctor<T>()(d, x, y);
     } else {
-      PADDLE_THROW(platform::errors::Unimplemented(
+      PADDLE_THROW(phi::errors::Unimplemented(
           "Unsupported activation type, only supports identity, sigmoid, tanh "
           "and relu."));
     }
@@ -105,7 +105,7 @@ class GRUUnitKernel : public framework::OpKernel<T> {
               gate_data,
               frame_size * 3);
 
-    // calculate activited gate
+    // calculate activated gate
     Eigen::array<int, 2> extents{{batch_size, frame_size}};
     Eigen::array<int, 2> u_offsets{{0, 0}};
     ActCompute(context.Attr<int>("gate_activation"),
@@ -169,7 +169,7 @@ class GRUUnitGradKernel : public framework::OpKernel<T> {
     else if (act_type == relu)
       ReluGradFunctor<T>()(d, x, y, dy, dx);
     else
-      PADDLE_THROW(platform::errors::Unimplemented(
+      PADDLE_THROW(phi::errors::Unimplemented(
           "Unsupported activation type, only supports identity, sigmoid, tanh "
           "and relu."));
   }

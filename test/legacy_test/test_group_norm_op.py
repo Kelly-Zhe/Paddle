@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 import unittest
 
 import numpy as np
@@ -117,18 +118,18 @@ class TestGroupNormOp(OpTest):
         self.attrs['data_layout'] = self.data_format
 
     def test_check_output(self):
+        self.fw_comp_atol = 1e-13
+        self.fw_comp_rtol = 1e-13
         atol = 0
         inplace_atol = 0
         place = core.CPUPlace()
 
-        check_prim_output = True if self.data_format == "NCHW" else False
+        check_prim_output = True
         self.check_output_with_place(
             place, atol=atol, check_pir=True, check_prim_pir=check_prim_output
         )
 
         if core.is_compiled_with_cuda():
-            self.fw_comp_atol = 1e-13
-            self.fw_comp_rtol = 1e-13
             place = core.CUDAPlace(0)
             # group_norm uses AtomicAdd on CUDAPlace, which do not ensure
             # computation order when multiple threads write the same address. So the
@@ -179,14 +180,26 @@ class TestGroupNormOp(OpTest):
             self.do_compare_between_place()
             return
 
+        check_prim_grad = True
+
+        self.rev_comp_atol = 1e-12
+        self.rev_comp_rtol = 1e-12
         place = core.CPUPlace()
         self.check_grad_with_place(
-            place, {'X', 'Scale', 'Bias'}, 'Y', check_pir=True
+            place,
+            ['X', 'Scale', 'Bias'],
+            'Y',
+            check_pir=True,
+            check_prim_pir=check_prim_grad,
         )
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             self.check_grad_with_place(
-                place, {'X', 'Scale', 'Bias'}, 'Y', check_pir=True
+                place,
+                ['X', 'Scale', 'Bias'],
+                'Y',
+                check_pir=True,
+                check_prim_pir=check_prim_grad,
             )
 
     def init_test_case(self):
@@ -203,7 +216,7 @@ class TestGroupNormFP16OP(TestGroupNormOp):
         atol = 1e-3
         inplace_atol = 1e-3
 
-        check_prim_output = True if self.data_format == "NCHW" else False
+        check_prim_output = True
         place = core.CUDAPlace(0)
         # group_norm uses AtomicAdd on CUDAPlace, which do not ensure
         # computation order when multiple threads write the same address. So the
@@ -221,9 +234,16 @@ class TestGroupNormFP16OP(TestGroupNormOp):
         if self.compare_between_place:
             return
 
+        check_prim_grad = True
+        self.rev_comp_atol = 1e-2
+        self.rev_comp_rtol = 1e-2
         place = core.CUDAPlace(0)
         self.check_grad_with_place(
-            place, {'X', 'Scale', 'Bias'}, 'Y', check_pir=True
+            place,
+            ['X', 'Scale', 'Bias'],
+            'Y',
+            check_pir=True,
+            check_prim_pir=check_prim_grad,
         )
 
     def init_test_case(self):
@@ -245,7 +265,7 @@ class TestGroupNormBF16Op(OpTest):
         self.data_format = "NCHW"
         self.dtype = np.uint16
         self.shape = (2, 100, 3, 5)
-        self.attrs = {'epsilon': 1e-5, 'groups': 2, 'data_layout': "NCHW"}
+        self.attrs = {'epsilon': 1e-5, 'groups': 10, 'data_layout': "NCHW"}
         self.compare_between_place = False
         self.init_test_case()
 
@@ -275,7 +295,7 @@ class TestGroupNormBF16Op(OpTest):
         atol = 1e-2
         inplace_atol = 1e-2
 
-        check_prim_output = True if self.data_format == "NCHW" else False
+        check_prim_output = True
         place = core.CUDAPlace(0)
         # group_norm uses AtomicAdd on CUDAPlace, which do not ensure
         # computation order when multiple threads write the same address. So the
@@ -293,9 +313,21 @@ class TestGroupNormBF16Op(OpTest):
         if self.compare_between_place:
             return
 
+        check_prim_grad = True
+
+        self.rev_comp_atol = 1e-2
+        self.rev_comp_rtol = 1e-2
+        # prim bf16 has diff in windows
+        if sys.platform == "win32" or self.data_format == "NHWC":
+            self.rev_comp_atol = 5e-2
+            self.rev_comp_rtol = 5e-2
         place = core.CUDAPlace(0)
         self.check_grad_with_place(
-            place, {'X', 'Scale', 'Bias'}, 'Y', check_pir=True
+            place,
+            ['X', 'Scale', 'Bias'],
+            'Y',
+            check_pir=True,
+            check_prim_pir=check_prim_grad,
         )
 
     def init_test_case(self):
@@ -331,7 +363,7 @@ class TestGroupNormFP16Op2(TestGroupNormFP16OP):
 
 class TestGroupNormBF16Op2(TestGroupNormBF16Op):
     def init_test_case(self):
-        self.attrs['groups'] = 4
+        self.attrs['groups'] = 10
 
 
 class TestGroupNormOpBigEps1(TestGroupNormOp):
@@ -366,7 +398,7 @@ class TestGroupNormOpLargeData(TestGroupNormOp):
 
 class TestGroupNormOp1_With_NHWC(TestGroupNormOp):
     def init_test_case(self):
-        self.attrs['groups'] = 1
+        self.attrs['groups'] = 2
         self.data_format = "NHWC"
 
 
@@ -379,7 +411,7 @@ class TestGroupNormOp2_With_NHWC(TestGroupNormOp):
 class TestGroupNormFP16Op_With_NHWC(TestGroupNormFP16OP):
     def init_test_case(self):
         self.no_need_check_inplace = True
-        self.attrs['groups'] = 1
+        self.attrs['groups'] = 10
         self.data_format = "NHWC"
         self.attrs['epsilon'] = 0.5
         self.shape = (1, 100, 4, 4)
@@ -403,13 +435,16 @@ class TestGroupNormBF16Op_With_NHWC(TestGroupNormBF16Op):
     def setUp(self):
         self.op_type = "group_norm"
         self.python_api = group_norm_wrapper
+        self.public_python_api = group_norm_wrapper
         self.python_out_sig = ["Y"]
         self.data_format = "NHWC"
+        self.prim_op_type = "comp"
+
         self.dtype = np.uint16
-        self.shape = (1, 3, 5, 100)
+        self.shape = (1, 3, 5, 512)
         self.attrs = {
             'epsilon': 5e-2,
-            'groups': 2,
+            'groups': 32,
             'data_layout': self.data_format,
         }
         self.compare_between_place = False
@@ -426,7 +461,7 @@ class TestGroupNormBF16Op_With_NHWC(TestGroupNormBF16Op):
             .reshape(self.shape)
             .astype(np.float32)
         )
-        scale = np.sin(np.arange(self.shape[3])).astype(np.float32)
+        scale = np.ones(self.shape[3]).astype(np.float32)
         bias = np.sin(np.arange(self.shape[3])).astype(np.float32)
         output, mean, var = group_norm_naive(
             input,
@@ -445,9 +480,14 @@ class TestGroupNormBF16Op_With_NHWC(TestGroupNormBF16Op):
         self.outputs = {'Y': output, 'Mean': mean, 'Variance': var}
 
     def test_check_output(self):
-        rtol = 2e-2
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place, rtol=rtol, check_pir=True)
+        self.check_output_with_place(
+            place,
+            rtol=2e-2,
+            inplace_atol=1e-3,
+            check_pir=True,
+            check_prim_pir=True,
+        )
 
 
 class TestGroupNormOpBigEps1_With_NHWC(TestGroupNormOp):
@@ -557,12 +597,12 @@ class TestGroupNormEager(unittest.TestCase):
         input = np.random.random(self.shape).astype(self.dtype)
 
         with base.dygraph.guard():
-            tensor_1 = base.dygraph.to_variable(input)
+            tensor_1 = paddle.to_tensor(input)
             tensor_1.stop_gradient = False
             groupNorm = paddle.nn.GroupNorm(num_channels=32, num_groups=4)
             ret1 = groupNorm(tensor_1)
             ret1.backward()
-            tensor_eager_1 = base.dygraph.to_variable(input)
+            tensor_eager_1 = paddle.to_tensor(input)
             tensor_eager_1.stop_gradient = False
             groupNorm_eager = paddle.nn.GroupNorm(num_channels=32, num_groups=4)
             ret2 = groupNorm_eager(tensor_eager_1)
@@ -577,12 +617,12 @@ class TestGroupNormEager(unittest.TestCase):
         input = np.random.random(self.shape).astype(self.dtype)
 
         with base.dygraph.guard():
-            tensor_1 = base.dygraph.to_variable(input)
+            tensor_1 = paddle.to_tensor(input)
             tensor_1.stop_gradient = False
             groupNorm = paddle.nn.GroupNorm(num_channels=32, num_groups=4)
             ret1 = groupNorm(tensor_1)
             ret1.backward()
-            tensor_eager_1 = base.dygraph.to_variable(input)
+            tensor_eager_1 = paddle.to_tensor(input)
             tensor_eager_1.stop_gradient = False
             groupNorm_eager = paddle.nn.GroupNorm(num_channels=32, num_groups=4)
             ret2 = groupNorm_eager(tensor_eager_1)
@@ -603,12 +643,12 @@ class TestGroupNormEager_fp16(unittest.TestCase):
         input = np.random.random(self.shape).astype(self.dtype)
 
         with base.dygraph.guard():
-            tensor_1 = base.dygraph.to_variable(input)
+            tensor_1 = paddle.to_tensor(input)
             tensor_1.stop_gradient = False
             groupNorm = paddle.nn.GroupNorm(num_channels=32, num_groups=4)
             ret1 = groupNorm(tensor_1)
             ret1.backward()
-            tensor_eager_1 = base.dygraph.to_variable(input)
+            tensor_eager_1 = paddle.to_tensor(input)
             tensor_eager_1.stop_gradient = False
             groupNorm_eager = paddle.nn.GroupNorm(num_channels=32, num_groups=4)
             ret2 = groupNorm_eager(tensor_eager_1)

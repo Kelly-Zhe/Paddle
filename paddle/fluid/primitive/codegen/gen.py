@@ -51,6 +51,9 @@ BACKENDS_BLACK_LIST = [
     "assert",
     "embedding_sparse_grad",
     "embedding_grad",
+    "full",
+    "partial_send",
+    "push_dense",
 ]
 
 # prim op with one input and one output, with no attribute
@@ -60,6 +63,7 @@ UNARY_PRIM_VJP_OPS = [
     'exp_grad',
     'floor_grad',
     'log_grad',
+    'rsqrt_grad',
     'sin_grad',
     'cos_grad',
     'tanh_grad',
@@ -102,8 +106,10 @@ OTHER_PRIM_VJP_OPS = [
 PRIM_VJP = UNARY_PRIM_VJP_OPS + BINARY_PRIM_VJP_OPS + OTHER_PRIM_VJP_OPS
 
 CUSTOM_VJP = [
+    'batch_norm_grad',
     'dropout_grad',
     'gelu_grad',
+    'group_norm_grad',
     'hardswish_grad',
     'instance_norm_grad',
     'layer_norm_grad',
@@ -112,6 +118,9 @@ CUSTOM_VJP = [
     'relu_grad',
     'sigmoid_grad',
     'silu_grad',
+    'exp_grad',
+    'log_grad',
+    'abs_double_grad',
     'softmax_grad',
     'sqrt_grad',
 ]  # custom vjp list of composite op
@@ -364,7 +373,7 @@ def gen(
 
     Args:
         prim_path (pathlib.Path): The YAML file path of the primitive API.
-        fwd_path (pathlib.Path):  The YAML file path of the forwad API.
+        fwd_path (pathlib.Path):  The YAML file path of the forward API.
         rev_path (pathlib.Path): The YAML file path of the backward API.
         compat_path: (pathlib.Path): The YAML file path of the ops compat.
         fwd_pd_op_path (pathlib.Path): The YAML file path of the ir forward API.

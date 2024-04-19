@@ -112,10 +112,6 @@ class TestWeightDecay(unittest.TestCase):
         feeder = base.DataFeeder(feed_list=feed_list, place=place)
         exe.run(base.default_startup_program())
 
-        exec_strategy = base.ExecutionStrategy()
-        if use_fast_executor:
-            exec_strategy.use_experimental_executor = True
-
         build_strategy = base.BuildStrategy()
         build_strategy.reduce_strategy = (
             base.BuildStrategy.ReduceStrategy.Reduce
@@ -142,7 +138,7 @@ class TestWeightDecay(unittest.TestCase):
     ):
         main_prog = base.framework.Program()
         startup_prog = base.framework.Program()
-        startup_prog.random_seed = 1
+        paddle.seed(1)
         with prog_scope_guard(main_prog=main_prog, startup_prog=startup_prog):
             data = paddle.static.data(
                 name="words", shape=[-1, 1], dtype="int64", lod_level=1

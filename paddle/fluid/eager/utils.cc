@@ -717,8 +717,8 @@ std::string EagerUtils::GradNodeStr(const egr::GradNodeBase& node) {
       in_slot_str +=
           paddle::string::Sprintf(SLOT_INFO_TEMPLATE, i, sg_str, edges_str);
     }
-    std::string in_meta_str =
-        paddle::string::Sprintf(GRAD_SLOT_META_TEMPLATE, in_slot_str);
+    std::string in_meta_str = paddle::string::Sprintf(
+        GRAD_SLOT_META_TEMPLATE, in_metas.size(), in_slot_str);
     return paddle::string::Sprintf(
         GRAD_NODE_TEMPLATE, out_meta_str, in_meta_str);
   } else if (VLOG_IS_ON(5)) {
@@ -777,9 +777,11 @@ std::string EagerUtils::TensorStr(const paddle::Tensor& t) {
                 "%s, Local Shape: %s", t.dims(), dist_t->local_dims()),
             dist_t->dist_attr());
       } else {
+        // NOTE: If the tensor is a dist-tensor, it's place may be `unknown` in
+        // the no-calculation rank.
         tensor_info_str += paddle::string::Sprintf(DIST_TENSOR_INFO_TEMPLATE,
                                                    t.impl()->type_info().name(),
-                                                   "Unknown",
+                                                   t.dtype(),
                                                    "Unknown",
                                                    dist_t->defined(),
                                                    dist_t->initialized(),

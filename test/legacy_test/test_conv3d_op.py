@@ -117,9 +117,9 @@ def conv3d_forward_naive(
 
     out = np.zeros((in_n, out_c, out_d, out_h, out_w))
 
-    d_bolck_d = dilation[0] * (f_d - 1) + 1
-    d_bolck_h = dilation[1] * (f_h - 1) + 1
-    d_bolck_w = dilation[2] * (f_w - 1) + 1
+    d_block_d = dilation[0] * (f_d - 1) + 1
+    d_block_h = dilation[1] * (f_h - 1) + 1
+    d_block_w = dilation[2] * (f_w - 1) + 1
 
     input_pad = np.pad(
         input,
@@ -134,13 +134,13 @@ def conv3d_forward_naive(
         constant_values=0,
     )
 
-    filter_dilation = np.zeros((f_n, f_c, d_bolck_d, d_bolck_h, d_bolck_w))
+    filter_dilation = np.zeros((f_n, f_c, d_block_d, d_block_h, d_block_w))
     filter_dilation[
         :,
         :,
-        0 : d_bolck_d : dilation[0],
-        0 : d_bolck_h : dilation[1],
-        0 : d_bolck_w : dilation[2],
+        0 : d_block_d : dilation[0],
+        0 : d_block_h : dilation[1],
+        0 : d_block_w : dilation[2],
     ] = filter
 
     for d in range(out_d):
@@ -150,9 +150,9 @@ def conv3d_forward_naive(
                     input_pad_masked = input_pad[
                         :,
                         g * f_c : (g + 1) * f_c,
-                        d * stride[0] : d * stride[0] + d_bolck_d,
-                        i * stride[1] : i * stride[1] + d_bolck_h,
-                        j * stride[2] : j * stride[2] + d_bolck_w,
+                        d * stride[0] : d * stride[0] + d_block_d,
+                        i * stride[1] : i * stride[1] + d_block_h,
+                        j * stride[2] : j * stride[2] + d_block_w,
                     ]
 
                     f_sub = filter_dilation[
@@ -454,7 +454,7 @@ class TestConv3DOp(OpTest):
         return core.is_compiled_with_cuda() and self.use_cudnn
 
     def test_check_output(self):
-        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        # TODO(wangzhongpu): support onednn op in dygraph mode
         place = core.CUDAPlace(0) if self.has_cudnn() else core.CPUPlace()
         self.check_output_with_place(
             place,
@@ -466,7 +466,7 @@ class TestConv3DOp(OpTest):
 
     def test_check_grad(self):
         place = core.CUDAPlace(0) if self.has_cudnn() else core.CPUPlace()
-        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        # TODO(wangzhongpu): support onednn op in dygraph mode
         self.check_grad_with_place(
             place,
             {'Input', 'Filter'},
@@ -479,7 +479,7 @@ class TestConv3DOp(OpTest):
 
     def test_check_grad_no_filter(self):
         place = core.CUDAPlace(0) if self.has_cudnn() else core.CPUPlace()
-        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        # TODO(wangzhongpu): support onednn op in dygraph mode
         self.check_grad_with_place(
             place,
             ['Input'],
@@ -493,7 +493,7 @@ class TestConv3DOp(OpTest):
 
     def test_check_grad_no_input(self):
         place = core.CUDAPlace(0) if self.has_cudnn() else core.CPUPlace()
-        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        # TODO(wangzhongpu): support onednn op in dygraph mode
         self.check_grad_with_place(
             place,
             ['Filter'],
@@ -1212,7 +1212,7 @@ class TestConv3DAPI_Error(unittest.TestCase):
 
             self.assertRaises(ValueError, run_5)
 
-            # ValueError: channel dimmention
+            # ValueError: channel dimension
             x = paddle.static.data(
                 name="x",
                 shape=[2, 5, 5, 5, -1],

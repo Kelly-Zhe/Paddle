@@ -15,12 +15,12 @@ limitations under the License. */
 #include "paddle/fluid/operators/collective/partial_allgather_op.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#include "paddle/common/flags.h"
 #include "paddle/fluid/distributed/collective/process_group.h"
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
-#include "paddle/phi/core/flags.h"
-PHI_DECLARE_bool(dynamic_static_unified_comm);
+COMMON_DECLARE_bool(dynamic_static_unified_comm);
 #endif
 
 #include "paddle/phi/core/distributed/comm_context_manager.h"
@@ -56,7 +56,7 @@ class PartialAllGatherOpCUDAKernel : public framework::OpKernel<T> {
     if (FLAGS_dynamic_static_unified_comm) {
       PADDLE_ENFORCE_EQ(comm_context_manager.Has(std::to_string(rid)),
                         true,
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "You choose to use new communication library by "
                             "setting environment "
                             "variable FLAGS_dynamic_static_unified_comm True. "
@@ -67,7 +67,7 @@ class PartialAllGatherOpCUDAKernel : public framework::OpKernel<T> {
           comm_context_manager.Get(std::to_string(rid)));
       PADDLE_ENFORCE_NE(comm_ctx,
                         nullptr,
-                        platform::errors::Unavailable(
+                        phi::errors::Unavailable(
                             "NCCLCommContext is nullptr, collective op should "
                             "has ring_id attr."));
 
@@ -87,17 +87,17 @@ class PartialAllGatherOpCUDAKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(
         nranks,
         real_nranks,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "nranks: %s should equal to %s", nranks, real_nranks));
     PADDLE_ENFORCE_EQ(rank,
                       real_rank,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "rank: %s should equal to %s", rank, real_rank));
 
     PADDLE_ENFORCE_EQ(
         (numel % nranks),
         0,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The input numel (%d) must be divisible by nranks(%d)",
             numel,
             nranks));
@@ -137,7 +137,7 @@ class PartialAllGatherOpCUDAKernel : public framework::OpKernel<T> {
       }
     }
 #else
-    PADDLE_THROW(platform::errors::PreconditionNotMet(
+    PADDLE_THROW(phi::errors::PreconditionNotMet(
         "PaddlePaddle should compile with GPU."));
 #endif
   }
@@ -160,5 +160,5 @@ PD_REGISTER_STRUCT_KERNEL(partial_allgather,
 #endif
                           int,
                           int64_t,
-                          plat::float16) {
+                          phi::dtype::float16) {
 }

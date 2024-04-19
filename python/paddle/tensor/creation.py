@@ -53,6 +53,10 @@ def _complex_to_real_dtype(dtype):
         return core.VarDesc.VarType.FP32
     elif dtype == core.VarDesc.VarType.COMPLEX128:
         return core.VarDesc.VarType.FP64
+    elif dtype == paddle.pir.core.DataType.COMPLEX64:
+        return paddle.pir.core.DataType.FP32
+    elif dtype == paddle.pir.core.DataType.COMPLEX128:
+        return paddle.pir.core.DataType.FP64
     else:
         return dtype
 
@@ -62,6 +66,10 @@ def _real_to_complex_dtype(dtype):
         return core.VarDesc.VarType.COMPLEX64
     elif dtype == core.VarDesc.VarType.FP64:
         return core.VarDesc.VarType.COMPLEX128
+    elif dtype == paddle.pir.core.DataType.FP32:
+        return paddle.pir.core.DataType.COMPLEX64
+    elif dtype == paddle.pir.core.DataType.FP64:
+        return paddle.pir.core.DataType.COMPLEX128
     else:
         return dtype
 
@@ -370,10 +378,8 @@ def linspace(start, stop, num, dtype=None, name=None):
             and out_dtype == "int32"
         ):
             raise ValueError(
-                "The dtype of start/stop is {}/{} but the attr(dtype) of linspace is {}, "
-                "which may cause data type overflows. Please reset attr(dtype) of linspace.".format(
-                    start_dtype, stop_dtype, dtype
-                )
+                f"The dtype of start/stop is {start_dtype}/{stop_dtype} but the attr(dtype) of linspace is {dtype}, "
+                "which may cause data type overflows. Please reset attr(dtype) of linspace."
             )
 
         out = helper.create_variable_for_type_inference(dtype=dtype)
@@ -524,10 +530,8 @@ def logspace(start, stop, num, base=10.0, dtype=None, name=None):
             and out_dtype == "int32"
         ):
             raise ValueError(
-                "The dtype of start/stop/base is {}/{}/{} but the attr(dtype) of logspace is {}, "
-                "which may cause data type overflows. Please reset attr(dtype) of logspace.".format(
-                    start_dtype, stop_dtype, base_dtype, dtype
-                )
+                f"The dtype of start/stop/base is {start_dtype}/{stop_dtype}/{base_dtype} but the attr(dtype) of logspace is {dtype}, "
+                "which may cause data type overflows. Please reset attr(dtype) of logspace."
             )
 
         out = helper.create_variable_for_type_inference(dtype=dtype)
@@ -576,7 +580,7 @@ def _to_tensor_non_static(data, dtype=None, place=None, stop_gradient=True):
             data = np.array(data)
             if data.dtype == np.object_:
                 raise ValueError(
-                    "\n\tFaild to convert input data to a regular ndarray :\n\t - Usually "
+                    "\n\tFailed to convert input data to a regular ndarray :\n\t - Usually "
                     "this means the input data contains nested lists with different lengths. "
                 )
         elif isinstance(data, paddle.Tensor) and not in_dynamic_mode():
@@ -592,7 +596,7 @@ def _to_tensor_non_static(data, dtype=None, place=None, stop_gradient=True):
         elif isinstance(data, (core.LoDTensor, core.Tensor)):
             # should't expose it to users, just for internal use.
             # convert core.Tensor/core.LoDTensor to Tensor first
-            # Currenly, there is no copy when places are same
+            # Currently, there is no copy when places are same
             if in_dynamic_mode():
                 data = core.eager.Tensor(data)
             else:
@@ -604,9 +608,7 @@ def _to_tensor_non_static(data, dtype=None, place=None, stop_gradient=True):
             return data
         else:
             raise TypeError(
-                "Can't constructs a 'paddle.Tensor' with data type {}, data type must be scalar|list|tuple|np.ndarray|paddle.Tensor".format(
-                    type(data)
-                )
+                f"Can't constructs a 'paddle.Tensor' with data type {type(data)}, data type must be scalar|list|tuple|np.ndarray|paddle.Tensor"
             )
         if not dtype:
             if data.dtype in [
@@ -899,15 +901,15 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
             value = float(value)
             if isinstance(shape, (list, tuple)):
                 shape = paddle.utils.convert_shape_to_list(shape)
-
         else:
+            paddle.utils.check_shape(shape)
             if isinstance(shape, (list, tuple)):
                 if paddle.utils._contain_var(shape):
-                    shape = paddle.utils.get_int_tensor_list(shape, place)
+                    shape = paddle.utils.get_int_tensor_list(shape)
             elif isinstance(shape, paddle.pir.Value):
                 pass
             else:
-                TypeError("Shape only supports OpReslut, or list, or tuple.")
+                raise TypeError("Shape only supports Value, or list, or tuple.")
 
         if out is None:
             out = _C_ops.full(shape, value, dtype, place)
@@ -1161,7 +1163,7 @@ def eye(num_rows, num_columns=None, dtype=None, name=None):
         num_columns(int, optional): the number of columns in each batch Tensor.
             If None, default: num_rows.
         dtype(np.dtype|str, optional): The data type of the returned Tensor.
-            It should be int32, int64, float16, float32, float64. Default: if None, the data type
+            It should be int32, int64, float16, float32, float64, complex64, complex128. Default: if None, the data type
             is float32.
         name(str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
@@ -1210,7 +1212,15 @@ def eye(num_rows, num_columns=None, dtype=None, name=None):
         check_dtype(
             dtype,
             'dtype',
-            ['float16', 'float32', 'float64', 'int32', 'int64'],
+            [
+                'float16',
+                'float32',
+                'float64',
+                'int32',
+                'int64',
+                'complex64',
+                'comple128',
+            ],
             'eye',
         )
         out = helper.create_variable_for_type_inference(dtype=dtype)
@@ -1313,12 +1323,12 @@ def arange(start=0, end=None, step=1, dtype=None, name=None):
             If ``end`` is None, the half-open interval is [0, ``start``).
             Default is None.
         step(float|int|Tensor, optional): Spacing between values. For any out,
-            it is the istance between two adjacent values, out[i+1] - out[i].
+            it is the instance between two adjacent values, out[i+1] - out[i].
             If ``step`` is a Tensor, it is a 0-D Tensor which represents a scalar
             and data type is int32, int64, float32, float64. . Default is 1.
         dtype(str|np.dtype, optional): The data type of the
             output tensor. Supported data types: int32, int64, float32, float64.
-            If ``dytpe`` is None, the data type is float32. Default is None.
+            If ``dtype`` is None, the data type is float32. Default is None.
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
@@ -1959,7 +1969,7 @@ def diag(x, offset=0, padding_value=0, name=None):
     If ``offset`` < 0, it is subdiagonal.
 
     Args:
-        x (Tensor): The input tensor. Its shape is either 1-D or 2-D. Its data type should be float16, float32, float64, int32, int64.
+        x (Tensor): The input tensor. Its shape is either 1-D or 2-D. Its data type should be float16, float32, float64, int32, int64, complex64, complex128.
         offset (int, optional): The diagonal offset. A positive value represents superdiagonal, 0 represents the main diagonal, and a negative value represents subdiagonal.
         padding_value (int|float, optional): Use this value to fill the area outside the specified diagonal band. Only takes effect when the input is a 1-D Tensor. The default value is 0.
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
@@ -2026,16 +2036,23 @@ def diag(x, offset=0, padding_value=0, name=None):
         check_dtype(
             x.dtype,
             'x',
-            ['float16', 'uint16', 'float32', 'float64', 'int32', 'int64'],
+            [
+                'float16',
+                'uint16',
+                'float32',
+                'float64',
+                'int32',
+                'int64',
+                'complex64',
+                'complex128',
+            ],
             'diag_v2',
         )
         check_type(offset, 'offset', (int), 'diag_v2')
         check_type(padding_value, 'padding_value', (int, float), 'diag_v2')
         if len(x.shape) != 1 and len(x.shape) != 2:
             raise ValueError(
-                "The dimension of input x must be either 1 or 2, but received {}".format(
-                    len(x.shape)
-                )
+                f"The dimension of input x must be either 1 or 2, but received {len(x.shape)}"
             )
 
         helper = LayerHelper("diag_v2", **locals())
@@ -2062,7 +2079,7 @@ def empty(shape, dtype=None, name=None):
             If ``shape`` is a list or tuple, each element of it should be integer or 0-D Tensor with shape [].
             If ``shape`` is an Tensor, it should be an 1-D Tensor which represents a list.
         dtype(np.dtype|str, optional): Data type of the output Tensor
-            which can be bool, float16, float32, float64, int32, int64, complex64, complex128 if dytpe is `None`, the data
+            which can be bool, float16, float32, float64, int32, int64, complex64, complex128 if dtype is `None`, the data
             type of created Tensor use global default dtype (see ``get_default_dtype``
             for details).
         name(str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
@@ -2108,7 +2125,37 @@ def empty(shape, dtype=None, name=None):
     dtype = convert_dtype(dtype)
 
     if in_dynamic_or_pir_mode():
-        shape = paddle.utils.convert_shape_to_list(shape)
+        if in_dynamic_mode():
+            shape = paddle.utils.convert_shape_to_list(shape)
+        else:
+            check_dtype(
+                dtype,
+                'dtype',
+                [
+                    'bool',
+                    'float16',
+                    'float32',
+                    'float64',
+                    'uint16',
+                    'int32',
+                    'int64',
+                    'complex64',
+                    'complex128',
+                ],
+                'empty',
+            )
+
+            paddle.utils.check_shape(shape)
+            if isinstance(shape, np.ndarray):
+                shape = shape.tolist()
+            if isinstance(shape, (list, tuple)):
+                if paddle.utils._contain_var(shape):
+                    shape = paddle.utils.get_int_tensor_list(shape)
+            elif isinstance(shape, paddle.pir.Value):
+                pass
+            else:
+                raise TypeError("Shape only supports Value, or list, or tuple.")
+
         out = _C_ops.empty(
             shape, convert_np_dtype_to_dtype_(dtype), _current_expected_place()
         )
@@ -2534,6 +2581,24 @@ def _memcpy(input, place=None, output=None):
              [2.5 2.5]
              [2.5 2.5]]
     """
+    dst_place_type = -1
+    if place is None:
+        dst_place_type = -1
+    else:
+        p = core.Place()
+        p.set_place(place)
+        if p.is_cpu_place():
+            dst_place_type = 0
+        elif p.is_gpu_place():
+            dst_place_type = 1
+        elif p.is_cuda_pinned_place():
+            dst_place_type = 2
+        elif p.is_xpu_place():
+            dst_place_type = 3
+
+    if in_pir_mode():
+        return _C_ops.memcpy(input, dst_place_type)
+
     helper = LayerHelper('memcpy', **locals())
     check_type(input, 'input', (Variable), 'memcpy')
 
@@ -2558,21 +2623,6 @@ def _memcpy(input, place=None, output=None):
     if output is None:
         output = helper.create_variable_for_type_inference(dtype=input.dtype)
 
-    dst_place_type = -1
-    if place is None:
-        dst_place_type = -1
-    else:
-        p = core.Place()
-        p.set_place(place)
-        if p.is_cpu_place():
-            dst_place_type = 0
-        elif p.is_gpu_place():
-            dst_place_type = 1
-        elif p.is_cuda_pinned_place():
-            dst_place_type = 2
-        elif p.is_xpu_place():
-            dst_place_type = 3
-
     attrs = {'dst_place_type': dst_place_type}
     helper.append_op(
         type='memcpy',
@@ -2584,7 +2634,7 @@ def _memcpy(input, place=None, output=None):
 
 
 def complex(real, imag, name=None):
-    """Return a compelx tensor given the real and image component.
+    """Return a complex tensor given the real and image component.
 
     Args:
         real (Tensor): The real component. The data type should be 'float32' or 'float64'.
@@ -2638,7 +2688,7 @@ def complex(real, imag, name=None):
 def tril_indices(row, col, offset=0, dtype='int64'):
     """
     Return the indices of the lower triangular part of the 2-D matrix
-    whose row and col is knowed.Indices are ordered based on row and then columns.
+    whose row and col is known. Indices are ordered based on row and then columns.
     The lower triangular part of the matrix is defined as the elements on
     and below the diagonal.
 
@@ -2686,6 +2736,15 @@ def tril_indices(row, col, offset=0, dtype='int64'):
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
+    if not isinstance(row, int) or row < 0:
+        raise TypeError("row should be a non-negative int")
+
+    if col is not None:
+        if not isinstance(col, int) or col < 0:
+            raise TypeError("col should be a non-negative int")
+    else:
+        col = row
+
     if in_dynamic_or_pir_mode():
         if col is None:
             col = row
@@ -2694,15 +2753,6 @@ def tril_indices(row, col, offset=0, dtype='int64'):
         )
         return out
     else:
-        if not isinstance(row, int) or row < 0:
-            raise TypeError("row should be a non-negative int")
-
-        if col is not None:
-            if not isinstance(col, int) or col < 0:
-                raise TypeError("col should be a non-negative int")
-        else:
-            col = row
-
         if not isinstance(offset, int):
             raise TypeError("offset should be a  int")
 
@@ -2729,7 +2779,7 @@ def triu_indices(row, col=None, offset=0, dtype='int64'):
     Args:
         row (int): The input x which is a int number describe the number of row of the matrix.
         col (int, optional): The input x which is a int number describe the number of col of the matrix.
-            default value for col is None, then it will be set equal to row, indicting a square matix.
+            default value for col is None, then it will be set equal to row, indicting a square matrix.
         offset (int, optional): The offset to consider, default value is 0.
 
             - If offset = 0, all elements on and above the main diagonal are retained.
@@ -2765,6 +2815,15 @@ def triu_indices(row, col=None, offset=0, dtype='int64'):
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
+    if not isinstance(row, int) or row < 0:
+        raise TypeError("row should be a non-negative int")
+
+    if col is not None:
+        if not isinstance(col, int) or col < 0:
+            raise TypeError("col should be a non-negative int")
+    else:
+        col = row
+
     if in_dynamic_or_pir_mode():
         if col is None:
             col = row
@@ -2773,15 +2832,6 @@ def triu_indices(row, col=None, offset=0, dtype='int64'):
         )
         return out
     else:
-        if not isinstance(row, int) or row < 0:
-            raise TypeError("row should be a non-negative int")
-
-        if col is not None:
-            if not isinstance(col, int) or col < 0:
-                raise TypeError("col should be a non-negative int")
-        else:
-            col = row
-
         if not isinstance(offset, int):
             raise TypeError("offset should be a int")
 
@@ -2799,11 +2849,11 @@ def triu_indices(row, col=None, offset=0, dtype='int64'):
 
 
 def polar(abs, angle, name=None):
-    """Return a Cartesian coordinates corresponding to the polar coordinates compelx tensor given the ``abs`` and ``angle`` component.
+    """Return a Cartesian coordinates corresponding to the polar coordinates complex tensor given the ``abs`` and ``angle`` component.
 
     Args:
         abs (Tensor): The abs component. The data type should be 'float32' or 'float64'.
-        angle (Tensor): The anglee component. The data type should be the same as ``abs``.
+        angle (Tensor): The angle component. The data type should be the same as ``abs``.
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:

@@ -24,6 +24,7 @@ from paddle.base.data_feeder import convert_dtype
 from paddle.base.dygraph.base import _convert_into_variable, in_to_static_mode
 from paddle.base.framework import Variable, core, default_main_program
 from paddle.framework import use_pir_api
+from paddle.jit.utils import OrderedSet
 from paddle.pir import Value
 from paddle.static.amp.fp16_utils import AmpOptions
 from paddle.utils import is_sequence, map_structure
@@ -65,7 +66,11 @@ def convert_attr(x, attr):
     # Value and Tensor are unified. So we don't need to transform
     # the size attr into a method call. The AttributeJstTransformer and
     # convert_attr can be safely removed.
-    if isinstance(x, Variable) and attr == "size":
+    if (
+        isinstance(x, Variable)
+        and not isinstance(x, paddle.Tensor)
+        and attr == "size"
+    ):
         return x.size()
     else:
         return getattr(x, attr)
@@ -108,7 +113,7 @@ def convert_load(x):
             if new_var is not None:
                 return new_var
 
-        if x is paddle.amp.auto_cast:
+        if x is paddle.amp.auto_cast and not use_pir_api():
             return convert_auto_cast
 
     return x
@@ -207,9 +212,9 @@ def _run_paddle_while(
     helper = GetterSetterHelper(getter, setter, return_name_ids, push_pop_names)
     _convert_tensor_arrray_if_necessary(helper, push_pop_names)
 
-    union_name = (set(return_name_ids) if return_name_ids else set()) | (
-        set(push_pop_names) if push_pop_names else set()
-    )
+    union_name = (
+        OrderedSet(return_name_ids) if return_name_ids else OrderedSet()
+    ) | (OrderedSet(push_pop_names) if push_pop_names else OrderedSet())
     union_name = list(union_name)
 
     def new_body_fn(*args):
@@ -444,9 +449,9 @@ def _run_paddle_cond(
     if return_name_ids is None and push_pop_names is None:
         union_name = None
     else:
-        union_name = (set(return_name_ids) if return_name_ids else set()) | (
-            set(push_pop_names) if push_pop_names else set()
-        )
+        union_name = (
+            OrderedSet(return_name_ids) if return_name_ids else OrderedSet()
+        ) | (OrderedSet(push_pop_names) if push_pop_names else OrderedSet())
         union_name = list(union_name)
 
     def new_true_fn():
@@ -553,9 +558,7 @@ def _check_no_undefined_var(outs, names, branch_name):
     for var, name in zip(list(outs), names):
         if isinstance(var, UndefinedVar):
             raise ValueError(
-                "Required '{}' must be initialized both in if-else branch, but found it not initialized in '{}'.".format(
-                    name, branch_name
-                )
+                f"Required '{name}' must be initialized both in if-else branch, but found it not initialized in '{branch_name}'."
             )
 
 
@@ -733,9 +736,7 @@ def convert_var_dtype(var, dtype):
             'int32',
             'int64',
             'uint8',
-        ], "The dtype of var {} is {}, which is not supported in the cast op.".format(
-            var.name, src_dtype
-        )
+        ], f"The dtype of var {var.name} is {src_dtype}, which is not supported in the cast op."
         assert dtype in [
             'bool',
             'int',
@@ -748,6 +749,11 @@ def convert_var_dtype(var, dtype):
         }
         return paddle.cast(var, dtype=cast_map[dtype])
     else:
+        assert dtype in [
+            'bool',
+            'int',
+            'float',
+        ], f"The casted target dtype is {dtype}, which is not supported in type casting."
         return eval(dtype)(var)
 
 

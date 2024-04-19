@@ -29,6 +29,7 @@ from .tensor.linalg import (
     lu,
     lu_unpack,
     matrix_exp,
+    matrix_norm,
     matrix_power,
     matrix_rank,
     multi_dot,
@@ -39,6 +40,7 @@ from .tensor.linalg import (
     slogdet,
     solve,
     svd,
+    svd_lowrank,
     triangular_solve,
     vector_norm,
 )
@@ -46,6 +48,7 @@ from .tensor.linalg import (
 __all__ = [
     'cholesky',
     'norm',
+    'matrix_norm',
     'vector_norm',
     'cond',
     'cov',
@@ -59,6 +62,7 @@ __all__ = [
     'qr',
     'householder_product',
     'pca_lowrank',
+    'svd_lowrank',
     'lu',
     'lu_unpack',
     'matrix_exp',

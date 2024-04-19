@@ -14,8 +14,8 @@
 
 #include "paddle/cinn/hlir/dialect/operator/ir/generate_shape_util.h"
 #include <unordered_set>
-#include "paddle/pir/core/builder.h"
-#include "paddle/pir/core/builtin_attribute.h"
+#include "paddle/pir/include/core/builder.h"
+#include "paddle/pir/include/core/builtin_attribute.h"
 
 namespace cinn::dialect {
 using namespace symbol;  // NOLINT
@@ -561,7 +561,7 @@ void GenerateSymbolBindings(
         dim_exprs.shape(), symbol_names, i, symbol_bindings);
     if (dim_exprs.data().has_value()) {
       AppendSymbolBindings<GenerateShapeOp::DataSymbolBinding>(
-          dim_exprs.shape(), symbol_names, i, symbol_bindings);
+          dim_exprs.data().value(), symbol_names, i, symbol_bindings);
     }
   }
 }
@@ -575,7 +575,7 @@ std::vector<pir::Value> GetMinimalInputs(
       [&](pir::Value input_tensor,
           const std::vector<symbol::DimExpr>& dim_exprs) {
         for (const auto& dim_expr : dim_exprs) {
-          if (dim_expr.isa<int64_t>()) continue;
+          if (!dim_expr.isa<std::string>()) continue;
           if (handled_dim_exprs.insert(dim_expr).second) {
             first_occurred_input_tensors.insert(input_tensor);
           }
@@ -617,6 +617,13 @@ bool MakeGenerateShapeOpAttribute(
                "they are handled by other passes";
     return false;
   }
+  // When minimal_inputs is empty, it means that all of out dim_expr must be
+  // int64.
+  if (minimal_inputs->empty()) {
+    for (const auto& dim_expr : out_dim_exprs) {
+      if (!dim_expr.isa<int64_t>()) return false;
+    }
+  }
   // generate output_dim_expr_attrs
   ConvertDimExprToAttributes(
       ir_context, out_dim_exprs, /*out*/ output_dim_expr_attrs);
@@ -627,6 +634,26 @@ bool MakeGenerateShapeOpAttribute(
                          *minimal_inputs,
                          symbol_names_in_out_dim_exprs,
                          /*out*/ symbol_bindings);
+
+  // check all dim exprs have symbol binding
+  for (const auto& symbol_name : symbol_names_in_out_dim_exprs) {
+    bool has_symbol_binding = false;
+    for (const auto& symbol_binding : *symbol_bindings) {
+      const std::string& symbol_binding_name = std::visit(
+          [&](const auto& symbol_binding) -> const std::string& {
+            return symbol_binding.symbol_name;
+          },
+          symbol_binding);
+      if (symbol_name == symbol_binding_name) {
+        has_symbol_binding = true;
+        break;
+      }
+    }
+    if (!has_symbol_binding) {
+      LOG(WARNING) << "no symbol binding found for dim expr: " << symbol_name;
+      return false;
+    }
+  }
   return true;
 }
 

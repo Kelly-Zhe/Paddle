@@ -40,10 +40,10 @@ limitations under the License. */
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/platform/device_context.h"
 
+#include "paddle/common/flags.h"
 #include "paddle/common/macros.h"
 #include "paddle/phi/core/compat/arg_map_context.h"
 #include "paddle/phi/core/compat/op_utils.h"
-#include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/kernel_factory.h"
 #include "paddle/utils/flat_hash_map.h"
@@ -61,7 +61,7 @@ namespace phi {
 class KernelContext;
 }
 
-PHI_DECLARE_int32(inner_op_parallelism);
+COMMON_DECLARE_int32(inner_op_parallelism);
 
 namespace paddle {
 namespace framework {
@@ -921,7 +921,7 @@ class OperatorWithKernel : public OperatorBase {
   mutable std::mutex cache_update_mutex_;
   mutable bool enable_cache_transfer_scope_ = false;
   // NOTE(jiahongyu): Whether fallback to plain kernel after calling
-  // GetExpectedKernelType, use this bool flag to solve mkldnn and cudnn hard
+  // GetExpectedKernelType, use this bool flag to solve onednn and cudnn hard
   // code
   mutable bool dnn_fallback_ = false;
   // NOTE(chenweihang): Similar op members are used to adapt to

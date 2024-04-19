@@ -34,6 +34,7 @@
 #include "paddle/cinn/hlir/framework/graph_compiler.h"
 #include "paddle/cinn/hlir/framework/graph_compiler_util.h"
 #include "paddle/cinn/hlir/framework/visualize_helper.h"
+#include "paddle/common/flags.h"
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
@@ -48,15 +49,12 @@
 #include "paddle/fluid/inference/analysis/dot.h"
 #include "paddle/fluid/operators/cinn/cinn_launch_context.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/string/string_helper.h"
-#include "paddle/phi/core/flags.h"
-#include "paddle/pir/core/program.h"
-#include "paddle/pir/core/value.h"
-#include "paddle/utils/flags.h"
+#include "paddle/pir/include/core/program.h"
+#include "paddle/pir/include/core/value.h"
+#include "paddle/utils/string/string_helper.h"
 
-PHI_DECLARE_bool(enable_pe_launch_cinn);
-PHI_DECLARE_bool(enable_cinn_auto_tune);
-PHI_DECLARE_string(cinn_subgraph_graphviz_dir);
+COMMON_DECLARE_bool(enable_cinn_auto_tune);
+COMMON_DECLARE_string(cinn_subgraph_graphviz_dir);
 namespace paddle {
 namespace framework {
 namespace paddle2cinn {
@@ -324,9 +322,7 @@ std::unique_ptr<CinnCompiledObject> CinnCompiler::CompileGraph(
   auto scope = BuildScope(target, cinn_graph);
   CompilationContext context(cinn_graph, scope, target);
   context.with_instantiate_variables = false;
-  if (!FLAGS_enable_pe_launch_cinn) {
-    context.with_buffer_handle_instruction_inserted = true;
-  }
+  context.with_buffer_handle_instruction_inserted = true;
   auto graph_compiler = std::make_unique<GraphCompiler>(context);
   std::unique_ptr<AutoTuner> auto_tuner;
   if (FLAGS_enable_cinn_auto_tune) {

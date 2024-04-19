@@ -282,16 +282,12 @@ class TestNameVisitor(Dy2StTestBase):
                 self.assertEqual(
                     loop_var_names,
                     self.loop_var_names[i],
-                    msg="loop_var_names : {}, \nexpected loop_var_names : {}".format(
-                        loop_var_names, self.loop_var_names[i]
-                    ),
+                    msg=f"loop_var_names : {loop_var_names}, \nexpected loop_var_names : {self.loop_var_names[i]}",
                 )
                 self.assertEqual(
                     create_var_names,
                     self.create_var_names[i],
-                    msg="i = {}\ncreate_var_names : {}, \nexpected create_var_names : {}".format(
-                        i, create_var_names, self.create_var_names[i]
-                    ),
+                    msg=f"i = {i}\ncreate_var_names : {create_var_names}, \nexpected create_var_names : {self.create_var_names[i]}",
                 )
                 i += 1
 
@@ -343,13 +339,6 @@ class TestTransformWhileLoopWithoutTensor(TestTransformWhileLoop):
 class TestTransformWhileLoopWithConflicVar(TestTransformWhileLoop):
     def _init_dyfunc(self):
         self.dyfunc = while_loop_dyfun_with_conflict_var
-
-    # This test raises an error about UndefinedVar in pir mode,
-    # it can be removed after the bug is fixed.
-    def test_ast_to_func(self):
-        static_numpy = self._run_static()
-        dygraph_numpy = self._run_dygraph()
-        np.testing.assert_allclose(dygraph_numpy, static_numpy, rtol=1e-05)
 
 
 class TestTransformWhileLoopWithNone(TestTransformWhileLoop):
@@ -433,13 +422,6 @@ class TestTransformForLoop4(TestTransformForLoop):
 class TestClassVarInForLoop(TestTransformForLoop):
     def _init_dyfunc(self):
         self.dyfunc = for_loop_class_var
-
-    # This test raises an error about UndefinedVar in pir mode,
-    # it can be removed after the bug is fixed.
-    def test_ast_to_func(self):
-        np.testing.assert_allclose(
-            self._run_dygraph(), self._run_static(), rtol=1e-05
-        )
 
 
 class TestVarCreateInForLoop(TestTransformForLoop):

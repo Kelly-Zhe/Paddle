@@ -74,13 +74,13 @@ def forward_grad(outputs, inputs, grad_inputs=None):
 
     if not isinstance(outputs, (framework.Variable, typing.Sequence)):
         raise TypeError(
-            f'Expected outputs is Tensor|Sequence[Tesnor], '
+            f'Expected outputs is Tensor|Sequence[Tensor], '
             f'but got {type(outputs)}.'
         )
 
     if not isinstance(inputs, (framework.Variable, typing.Sequence)):
         raise TypeError(
-            f'Expected inputs is Tensor|Sequence[Tesnor], '
+            f'Expected inputs is Tensor|Sequence[Tensor], '
             f'but got {type(inputs)}.'
         )
 
@@ -151,9 +151,9 @@ def grad(outputs, inputs, grad_outputs=None):
     """
     if not utils.prim_enabled():
         grad_inputs = backward.gradients(outputs, inputs, grad_outputs)
-        # backward.gradients returns a list though the inputs is a signle Tensor.
+        # backward.gradients returns a list though the inputs is a single Tensor.
         # The follow code snippet fixes the problem by return the first element
-        # of grad_inputs when the inputs is a signle Tensor.
+        # of grad_inputs when the inputs is a single Tensor.
         if (
             isinstance(inputs, framework.Variable)
             and isinstance(grad_inputs, typing.Sequence)
@@ -165,13 +165,13 @@ def grad(outputs, inputs, grad_outputs=None):
 
     if not isinstance(outputs, (framework.Variable, typing.Sequence)):
         raise TypeError(
-            f'Expected outputs is Tensor|Sequence[Tesnor], '
+            f'Expected outputs is Tensor|Sequence[Tensor], '
             f'but got {type(outputs)}.'
         )
 
     if not isinstance(inputs, (framework.Variable, typing.Sequence)):
         raise TypeError(
-            f'Expected inputs is Tensor|Sequence[Tesnor], '
+            f'Expected inputs is Tensor|Sequence[Tensor], '
             f'but got {type(inputs)}.'
         )
 
@@ -256,11 +256,11 @@ def to_prim(
         )
     if not isinstance(blacklist, (set, frozenset)):
         raise TypeError(
-            f'Expected type of blacklisst is set|frozenset, but got {type(blacklist)}.'
+            f'Expected type of blacklist is set|frozenset, but got {type(blacklist)}.'
         )
     if not isinstance(whitelist, (set, frozenset)):
         raise TypeError(
-            f'Expected type of whiltelist is set|frozenset, but got {type(whitelist)}.'
+            f'Expected type of whitelist is set|frozenset, but got {type(whitelist)}.'
         )
 
     blacklist = prim_config["forward_blacklist"] | blacklist

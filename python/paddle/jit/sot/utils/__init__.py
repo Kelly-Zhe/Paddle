@@ -47,7 +47,6 @@ from .utils import (  # noqa: F401
     ConstTypes,
     GraphLogger,
     NameGenerator,
-    OrderedSet,
     ResumeFnNameFactory,
     Singleton,
     SotUndefinedVar,
@@ -58,6 +57,7 @@ from .utils import (  # noqa: F401
     execute_time,
     flatten,
     flatten_extend,
+    get_api_fullname,
     get_unbound_method,
     hashable,
     in_paddle_module,
@@ -75,5 +75,6 @@ from .utils import (  # noqa: F401
     map_if_extend,
     meta_str,
     no_eval_frame,
+    printable,
     tmp_name_guard,
 )

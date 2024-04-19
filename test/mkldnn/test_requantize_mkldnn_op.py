@@ -90,7 +90,7 @@ class TestReQuantizeOp(OpTest):
         self.outputs = {'Output': self.output}
 
     def test_check_output(self):
-        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        # TODO(wangzhongpu): support onednn op in dygraph mode
         self.assertTrue(
             self.input_data_type == 'uint8' or self.shift_in == 0.0,
             'Input data must be unsigned if it has nonzero shift.',
@@ -296,7 +296,7 @@ class TestReQuantizeOp_U8_DifferentScales_2_DifferentShift_2(
         self.shift_out = 128.0
 
 
-# ---------------test non-four dimentional formats--------------------------
+# ---------------test non-four dimensional formats--------------------------
 
 
 class TestReQuantizeOp_2DimFormat(TestReQuantizeOp):

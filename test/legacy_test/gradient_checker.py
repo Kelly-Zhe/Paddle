@@ -31,11 +31,11 @@ def _product(t):
 
 
 def dtype_to_np_dtype(dtype):
-    if dtype == core.VarDesc.VarType.FP32 or dtype == core.DataType.FLOAT32:
+    if dtype == paddle.float32 or dtype == core.DataType.FLOAT32:
         return np.float32
-    elif dtype == core.VarDesc.VarType.FP64 or dtype == core.DataType.FLOAT64:
+    elif dtype == paddle.float64 or dtype == core.DataType.FLOAT64:
         return np.float64
-    elif dtype == core.VarDesc.VarType.FP16 or dtype == core.DataType.FLOAT16:
+    elif dtype == paddle.float16 or dtype == core.DataType.FLOAT16:
         return np.float16
     else:
         raise ValueError("Not supported data type " + str(dtype))
@@ -446,7 +446,7 @@ def grad_check(
         n = numerical[x_idx][y_idx]
         if not np.allclose(a, n, rtol, atol):
             msg = (
-                f'Jacobian mismatch for output {y_idx} in y'
+                f'Jacobian mismatch for output {y_idx} in y '
                 f'with respect to input {x_idx} in x on {str(place)},\n'
                 f'numerical:{n}\nanalytical:{a}\n'
             )

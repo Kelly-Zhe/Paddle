@@ -14,7 +14,7 @@
 
 import numpy as np
 
-from paddle import _C_ops, _legacy_C_ops, in_dynamic_mode
+from paddle import _C_ops, in_dynamic_mode
 from paddle.base.framework import (
     Variable,
     in_dygraph_mode,
@@ -43,9 +43,7 @@ def _is_list_or_tuple(input):
 def _check_input(x, dimension):
     if len(x.shape) != dimension:
         raise ValueError(
-            "Excepted Input X is {}-D tensor, but received {}-D {}".format(
-                dimension, len(x.shape), type(x)
-            )
+            f"Excepted Input X is {dimension}-D tensor, but received {len(x.shape)}-D {type(x)}"
         )
 
 
@@ -60,9 +58,7 @@ def _check_value_limitation(x, x_name, min_limit=1e-3):
     def _check_value(x, x_name, min_limit=1e-3):
         if isinstance(x, int) and min_limit is not None and x < min_limit:
             raise ValueError(
-                "Excepted the input {} to be greater than {} but received x: {}. ".format(
-                    x_name, min_limit, x
-                )
+                f"Excepted the input {x_name} to be greater than {min_limit} but received x: {x}. "
             )
 
     for ele in x:
@@ -716,9 +712,7 @@ def _unpool_output_size(x, kernel_size, stride, padding, output_size):
     if len(output_size) != len(kernel_size):
         raise ValueError(
             "output_size should be a sequence containing "
-            "{} or {} elements, but it has a length of '{}'".format(
-                len(kernel_size), len(kernel_size) + 2, len(output_size)
-            )
+            f"{len(kernel_size)} or {len(kernel_size) + 2} elements, but it has a length of '{len(output_size)}'"
         )
     if not has_static_var:
         for d in range(len(kernel_size)):
@@ -726,9 +720,7 @@ def _unpool_output_size(x, kernel_size, stride, padding, output_size):
             max_size = default_size[d] + stride[d]
             if not (min_size < output_size[d] < max_size):
                 raise ValueError(
-                    'invalid output_size "{}" (dim {} must be between {} and {})'.format(
-                        output_size, d, min_size, max_size
-                    )
+                    f'invalid output_size "{output_size}" (dim {d} must be between {min_size} and {max_size})'
                 )
 
     return output_size
@@ -828,24 +820,6 @@ def max_unpool1d(
     if in_dynamic_or_pir_mode():
         output = _C_ops.unpool(
             x, indices, kernel_size, stride, padding, output_size, data_format
-        )
-        return squeeze(output, [2])
-    elif in_dynamic_mode():
-        output = _legacy_C_ops.unpool(
-            x,
-            indices,
-            'unpooling_type',
-            'max',
-            'ksize',
-            kernel_size,
-            'strides',
-            stride,
-            'paddings',
-            padding,
-            "output_size",
-            output_size,
-            "data_format",
-            data_format,
         )
         return squeeze(output, [2])
 
@@ -980,24 +954,6 @@ def max_unpool2d(
             x, indices, kernel_size, stride, padding, output_size, data_format
         )
         return output
-    elif in_dynamic_mode():
-        output = _legacy_C_ops.unpool(
-            x,
-            indices,
-            'unpooling_type',
-            'max',
-            'ksize',
-            kernel_size,
-            'strides',
-            stride,
-            'paddings',
-            padding,
-            "output_size",
-            output_size,
-            "data_format",
-            data_format,
-        )
-        return output
 
     op_type = "unpool"
     helper = LayerHelper(op_type, **locals())
@@ -1125,24 +1081,6 @@ def max_unpool3d(
     if in_dynamic_or_pir_mode():
         output = _C_ops.unpool3d(
             x, indices, kernel_size, stride, padding, output_size, data_format
-        )
-        return output
-    elif in_dynamic_mode():
-        output = _legacy_C_ops.unpool3d(
-            x,
-            indices,
-            'unpooling_type',
-            'max',
-            'ksize',
-            kernel_size,
-            'strides',
-            stride,
-            'paddings',
-            padding,
-            "output_size",
-            output_size,
-            "data_format",
-            data_format,
         )
         return output
 

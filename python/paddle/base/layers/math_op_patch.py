@@ -258,11 +258,35 @@ def monkey_patch_variable():
         """
         Variable don't have 'place' interface in static graph mode
         But this interface can greatly facilitate dy2static.
-        So we give a warnning here and return None.
+        So we give a warning here and return None.
         """
         warnings.warn(
             "Variable do not have 'place' interface for static graph mode, try not to use it. None will be returned."
         )
+
+    @static_only
+    def contiguous(self):
+        """
+        Variable don't have 'contiguous' interface in static graph mode
+        But this interface can greatly facilitate dy2static.
+        So we give a warning here and return None.
+        """
+        warnings.warn(
+            "Variable do not have 'contiguous' interface for static graph mode, try not to use it. self will be returned."
+        )
+        return self
+
+    @static_only
+    def is_contiguous(self):
+        """
+        Variable don't have 'is_contiguous' interface in static graph mode
+        But this interface can greatly facilitate dy2static.
+        So we give a warning here and return None.
+        """
+        warnings.warn(
+            "Variable do not have 'is_contiguous' interface for static graph mode, try not to use it. True will be returned."
+        )
+        return True
 
     def astype(self, dtype):
         """
@@ -302,11 +326,12 @@ def monkey_patch_variable():
             .. code-block:: python
 
                 >>> import paddle.base as base
+                >>> import paddle
                 >>> import numpy as np
 
                 >>> x = np.ones([2, 2], np.float32)
                 >>> with base.dygraph.guard():
-                ...     original_variable = base.dygraph.to_variable(x)
+                ...     original_variable = paddle.to_tensor(x)
                 ...     print("original var's dtype is: {}, numpy dtype is {}".format(original_variable.dtype, original_variable.numpy().dtype))
                 ...     new_variable = original_variable.astype('int64')
                 ...     print("new var's dtype is: {}, numpy dtype is {}".format(new_variable.dtype, new_variable.numpy().dtype))
@@ -335,7 +360,7 @@ def monkey_patch_variable():
         """
         if not isinstance(var, Variable):
             if in_to_static_mode():
-                """in dy2static mode, x may be tensorable values such as int, float, np.array"""
+                """In dy2static mode, x may be tensor values such as int, float, np.array"""
                 from paddle.tensor.creation import to_tensor
 
                 var = to_tensor(var)
@@ -345,9 +370,7 @@ def monkey_patch_variable():
                 )
         if self.type != core.VarDesc.VarType.LOD_TENSOR_ARRAY:
             raise TypeError(
-                "Only Variable with VarType.LOD_TENSOR_ARRAY support `append` method, but received type: {}".format(
-                    self.type
-                )
+                f"Only Variable with VarType.LOD_TENSOR_ARRAY support `append` method, but received type: {self.type}"
             )
         from paddle.tensor.array import array_length, array_write
 
@@ -384,9 +407,7 @@ def monkey_patch_variable():
 
         if self.type != core.VarDesc.VarType.LOD_TENSOR_ARRAY:
             raise TypeError(
-                "Only Variable with VarType.LOD_TENSOR_ARRAY support `pop` method, but received type: {}".format(
-                    self.type
-                )
+                f"Only Variable with VarType.LOD_TENSOR_ARRAY support `pop` method, but received type: {self.type}"
             )
         if len(args) == 0:
             idx = -1
@@ -628,16 +649,9 @@ def monkey_patch_variable():
                 file_name = stack[1]
                 line_num = stack[2]
                 warnings.warn(
-                    "{}:{}\nThe behavior of expression {} has been unified with {}(X, Y, axis=-1) from Paddle 2.0. "
+                    f"{file_name}:{line_num}\nThe behavior of expression {EXPRESSION_MAP[method_name]} has been unified with {op_type}(X, Y, axis=-1) from Paddle 2.0. "
                     "If your code works well in the older versions but crashes in this version, try to use "
-                    "{}(X, Y, axis=0) instead of {}. This transitional warning will be dropped in the future.".format(
-                        file_name,
-                        line_num,
-                        EXPRESSION_MAP[method_name],
-                        op_type,
-                        op_type,
-                        EXPRESSION_MAP[method_name],
-                    ),
+                    f"{op_type}(X, Y, axis=0) instead of {EXPRESSION_MAP[method_name]}. This transitional warning will be dropped in the future.",
                     category=DeprecationWarning,
                 )
             current_block(self).append_op(
@@ -716,6 +730,8 @@ def monkey_patch_variable():
         ('cpu', cpu),
         ('cuda', cuda),
         ('place', place),
+        ('contiguous', contiguous),
+        ('is_contiguous', is_contiguous),
         ('append', append),
         ('item', _item),
         ('pop', pop),

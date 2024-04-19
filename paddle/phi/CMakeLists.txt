@@ -35,7 +35,6 @@ endif()
 set(PHI_DEPS
     phi_profiler_proto
     auto_parallel_proto
-    ${flags_dep}
     glog
     warpctc
     warprnnt
@@ -63,8 +62,8 @@ if(WITH_XBYAK)
   list(APPEND PHI_DEPS xbyak)
 endif()
 
-if(WITH_MKLDNN)
-  list(APPEND PHI_DEPS mkldnn)
+if(WITH_ONEDNN)
+  list(APPEND PHI_DEPS onednn)
 endif()
 
 if(WITH_GLOO)
@@ -120,8 +119,11 @@ if(WITH_AVX
    AND AVX512F_FLAG
    AND WITH_MKL)
   set_source_files_properties(
+    kernels/fusion/cpu/fused_layer_norm_avx_kernel.cc
     kernels/fusion/cpu/self_dp_attention_kernel.cc
-    PROPERTIES COMPILE_FLAGS "-Wno-maybe-uninitialized  -mfma ${AVX512F_FLAG}")
+    kernels/fusion/cpu/rms_norm_avx_kernel.cc
+    PROPERTIES COMPILE_FLAGS
+               "${Wno_Maybe_Uninitialized} ${FMA_FLAG} ${AVX512F_FLAG}")
 endif()
 
 if(WITH_GPU)
@@ -135,8 +137,11 @@ if(WITH_GPU)
     DEPS ${PHI_DEPS})
 
 elseif(WITH_ROCM)
-  hip_add_library(phi ${PHI_BUILD_TYPE} ${PHI_SRCS})
-  target_link_libraries(phi ${PHI_DEPS})
+  hip_library(
+    phi ${PHI_BUILD_TYPE}
+    SRCS ${PHI_SRCS}
+    DEPS ${PHI_DEPS})
+
 elseif(WITH_XPU_KP)
   xpu_library(
     phi ${PHI_BUILD_TYPE}
@@ -148,6 +153,8 @@ else()
     SRCS ${PHI_SRCS}
     DEPS ${PHI_DEPS})
 endif()
+
+target_compile_definitions(phi PUBLIC PHI_INNER)
 
 if(WIN32)
   target_link_libraries(phi shlwapi.lib)
